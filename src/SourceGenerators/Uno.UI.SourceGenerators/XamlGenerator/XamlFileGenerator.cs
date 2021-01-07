@@ -4980,10 +4980,12 @@ namespace Uno.UI.SourceGenerators.XamlGenerator
 		{
 			TryAnnotateWithGeneratorSource(writer);
 			var strategy = FindMember(definition, "DeferLoadStrategy");
-			var loadElement = FindMember(definition, "Load");
+			var loadMember = FindMember(definition, "Load");
+			var hasLoadMarkup = HasMarkupExtension(loadMember);
 
 			if (strategy?.Value?.ToString().ToLowerInvariant() == "lazy"
-				|| loadElement?.Value?.ToString().ToLowerInvariant() == "false")
+				|| loadMember?.Value?.ToString().ToLowerInvariant() == "false"
+				|| hasLoadMarkup)
 			{
 				var visibilityMember = FindMember(definition, "Visibility");
 				var dataContextMember = FindMember(definition, "DataContext");
@@ -4995,7 +4997,7 @@ namespace Uno.UI.SourceGenerators.XamlGenerator
 					return null;
 				}
 
-				if (visibilityMember != null || loadElement?.Value != null)
+				if (visibilityMember != null || loadMember?.Value != null || hasLoadMarkup)
 				{
 					var hasVisibilityMarkup = HasMarkupExtension(visibilityMember);
 					var isLiteralVisible = !hasVisibilityMarkup && (visibilityMember?.Value?.ToString() == "Visible");
@@ -5020,16 +5022,7 @@ namespace Uno.UI.SourceGenerators.XamlGenerator
 									// We need to generate the datacontext binding, since the Visibility
 									// may require it to bind properly.
 
-									var def = new XamlMemberDefinition(
-										new XamlMember("DataContext",
-											elementStubType,
-											false
-										), 0, 0
-									);
-
-									def.Objects.AddRange(dataContextMember.Objects);
-
-									BuildComplexPropertyValue(innerWriter, def, closureName + ".", closureName);
+									GenerateBinding("DataContext", dataContextMember);
 								}
 
 								if (nameMember != null)
@@ -5045,18 +5038,19 @@ namespace Uno.UI.SourceGenerators.XamlGenerator
 									);
 								}
 
-								if (hasVisibilityMarkup)
+								if (hasLoadMarkup || hasVisibilityMarkup)
 								{
-									var def = new XamlMemberDefinition(
-										new XamlMember("Visibility",
-											elementStubType,
-											false
-										), 0, 0
-									);
+									var members = new List<XamlMemberDefinition>();
 
-									def.Objects.AddRange(visibilityMember.Objects);
+									if (hasLoadMarkup)
+									{
+										members.Add(GenerateBinding("Load", loadMember));
+									}
 
-									BuildComplexPropertyValue(innerWriter, def, closureName + ".", closureName);
+									if (hasVisibilityMarkup)
+									{
+										members.Add(GenerateBinding("Visibility", visibilityMember));
+									}
 
 									if (!IsMemberInsideResourceDictionary(definition, maxDepth: null)
 										&& (HasXBindMarkupExtension(definition) || HasMarkupExtensionNeedingComponent(definition)))
@@ -5074,9 +5068,13 @@ namespace Uno.UI.SourceGenerators.XamlGenerator
 
 										writer.AppendLineInvariant($"{closureName}.Unloaded += {componentName}_update;");
 
-										CurrentScope.Components.Add(new XamlObjectDefinition(elementStubType, 0, 0, definition) { Members = { def } });
+										var xamlObjectDef = new XamlObjectDefinition(elementStubType, 0, 0, definition);
+										xamlObjectDef.Members.AddRange(members);
+										CurrentScope.Components.Add(xamlObjectDef);
 									}
+
 								}
+
 								else
 								{
 									if (visibilityMember != null)
@@ -5087,6 +5085,22 @@ namespace Uno.UI.SourceGenerators.XamlGenerator
 											BuildLiteralValue(visibilityMember)
 										);
 									}
+								}
+
+								XamlMemberDefinition GenerateBinding(string name, XamlMemberDefinition memberDefinition)
+								{
+									var def = new XamlMemberDefinition(
+										new XamlMember(name,
+											elementStubType,
+											false
+										), 0, 0
+									);
+
+									def.Objects.AddRange(memberDefinition.Objects);
+
+									BuildComplexPropertyValue(innerWriter, def, closureName + ".", closureName);
+
+									return def;
 								}
 							}
 						}

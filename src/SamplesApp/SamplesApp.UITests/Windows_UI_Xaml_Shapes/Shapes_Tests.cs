@@ -130,5 +130,94 @@ namespace SamplesApp.UITests.Windows_UI_Xaml_Shapes
 
 			ImageAssert.HasColorAt(screenshot, bounds.CenterX, bounds.CenterY, Color.Blue);
 		}
+
+		[Test]
+		[AutoRetry]
+		public void Default_StrokeThickness()
+		{
+			const string red = "#FF0000";
+			const string blue = "#0000FF";
+
+			var shapeNames = new[] { "MyLine", "MyRect", "MyPolyline", "MyPolygon", "MyEllipse", "MyPath" };
+			Run("UITests.Windows_UI_Xaml_Shapes.Shapes_Default_StrokeThickness");
+
+			_app.WaitForElement("TestZone");
+
+			foreach(var shapeName in shapeNames)
+			{
+				_app.Marked($"{shapeName}Selector")
+					.Tap();
+
+				using var screenshot = TakeScreenshot($"{shapeName}");
+				if (shapeName == "MyLine" || shapeName == "MyPath")
+				{
+					var targetRect = _app.GetPhysicalRect($"{shapeName}Target");
+					ImageAssert.DoesNotHaveColorAt(screenshot, targetRect.CenterX, targetRect.CenterY, Color.White);
+
+					_app.Marked(shapeName).SetDependencyPropertyValue("StrokeThickness", "0");
+
+					using var zeroStrokeThicknessScreenshot = TakeScreenshot($"{shapeName}_0_StrokeThickness");
+					ImageAssert.HasColorAt(zeroStrokeThicknessScreenshot, targetRect.CenterX, targetRect.CenterY, Color.White);
+				}
+				else
+				{
+					var shapeContainer = _app.GetPhysicalRect($"{shapeName}Grid");
+
+					ImageAssert.HasPixels(
+					screenshot,
+					ExpectedPixels
+						.At($"left-{shapeName}", shapeContainer.X, shapeContainer.CenterY)
+						.WithPixelTolerance(2, 2)
+						.WithColorTolerance(15)
+						.Pixel(red),
+					ExpectedPixels
+						.At($"top-{shapeName}", shapeContainer.CenterX, shapeContainer.Y)
+						.WithPixelTolerance(2, 2)
+						.WithColorTolerance(15)
+						.Pixel(red),
+					ExpectedPixels
+						.At($"right-{shapeName}", shapeContainer.Right, shapeContainer.CenterY)
+						.WithPixelTolerance(2, 2)
+						.WithColorTolerance(15)
+						.Pixel(red),
+					ExpectedPixels
+						.At($"bottom-{shapeName}", shapeContainer.CenterX, shapeContainer.Bottom)
+						.WithPixelTolerance(2, 2)
+						.WithColorTolerance(15)
+						.Pixel(red)
+					);
+
+					_app.Marked(shapeName).SetDependencyPropertyValue("StrokeThickness", "0");
+
+					using var zeroStrokeThicknessScreenshot = TakeScreenshot($"{shapeName}_0_StrokeThickness");
+
+					ImageAssert.HasPixels(
+					screenshot,
+					ExpectedPixels
+						.At($"left-{shapeName}", shapeContainer.X, shapeContainer.CenterY)
+						.WithPixelTolerance(2, 2)
+						.WithColorTolerance(15)
+						.Pixel(blue),
+					ExpectedPixels
+						.At($"top-{shapeName}", shapeContainer.CenterX, shapeContainer.Y)
+						.WithPixelTolerance(2, 2)
+						.WithColorTolerance(15)
+						.Pixel(blue),
+					ExpectedPixels
+						.At($"right-{shapeName}", shapeContainer.Right, shapeContainer.CenterY)
+						.WithPixelTolerance(2, 2)
+						.WithColorTolerance(15)
+						.Pixel(blue),
+					ExpectedPixels
+						.At($"bottom-{shapeName}", shapeContainer.CenterX, shapeContainer.Bottom)
+						.WithPixelTolerance(2, 2)
+						.WithColorTolerance(15)
+						.Pixel(blue)
+					);
+				}
+			}
+
+		}
+
 	}
 }

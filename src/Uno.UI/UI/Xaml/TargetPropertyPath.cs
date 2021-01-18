@@ -20,8 +20,10 @@ namespace Windows.UI.Xaml
 				if (_targetRef != null)
 				{
 					WeakReferencePool.ReturnWeakReference(this, _targetRef);
+					_targetRef = null;
 				}
-				else
+
+				if (!(value is null))
 				{
 					_targetRef = WeakReferencePool.RentWeakReference(this, value);
 				}
